@@ -1,0 +1,154 @@
+vexora/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   ├── register/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   └── layout.tsx
+│   │
+│   ├── (dashboard)/
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx
+│   │   │   ├── loading.tsx
+│   │   │   └── error.tsx
+│   │   ├── projects/
+│   │   │   ├── page.tsx
+│   │   │   ├── new/page.tsx
+│   │   │   └── [projectId]/
+│   │   │       ├── page.tsx
+│   │   │       ├── settings/page.tsx
+│   │   │       └── export/page.tsx
+│   │   ├── templates/
+│   │   │   ├── page.tsx
+│   │   │   └── [slug]/page.tsx
+│   │   ├── assets/
+│   │   │   ├── page.tsx
+│   │   │   ├── videos/page.tsx
+│   │   │   ├── audio/page.tsx
+│   │   │   ├── images/page.tsx
+│   │   │   └── uploads/page.tsx
+│   │   ├── exports/
+│   │   │   ├── page.tsx
+│   │   │   └── [exportId]/page.tsx
+│   │   ├── settings/
+│   │   │   ├── page.tsx
+│   │   │   ├── profile/page.tsx
+│   │   │   ├── billing/page.tsx
+│   │   │   └── preferences/page.tsx
+│   │   └── layout.tsx
+│   │
+│   ├── editor/
+│   │   └── [projectId]/
+│   │       ├── page.tsx
+│   │       ├── layout.tsx
+│   │       └── loading.tsx
+│   │
+│   ├── about/page.tsx
+│   ├── contact/page.tsx
+│   ├── privacy/page.tsx
+│   ├── terms/page.tsx
+│   ├── pricing/page.tsx
+│   ├── effects/page.tsx
+│   │
+│   ├── api/
+│   │   ├── auth/[...nextauth]/route.ts
+│   │   ├── projects/
+│   │   │   ├── route.ts
+│   │   │   ├── featured/route.ts
+│   │   │   ├── recent/route.ts
+│   │   │   └── [slug]/
+│   │   │       ├── route.ts
+│   │   │       └── render/route.ts
+│   │   ├── templates/
+│   │   │   ├── route.ts
+│   │   │   └── [slug]/route.ts
+│   │   ├── assets/
+│   │   │   ├── route.ts
+│   │   │   └── upload/route.ts
+│   │   ├── features/route.ts
+│   │   ├── testimonials/route.ts
+│   │   ├── faqs/route.ts
+│   │   ├── stats/route.ts
+│   │   ├── exports/
+│   │   │   ├── route.ts
+│   │   │   └── [exportId]/route.ts
+│   │   └── ai/
+│   │       ├── auto-caption/route.ts
+│   │       └── background-remove/route.ts
+│   │
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Navbar.tsx
+│   │   │   ├── Footer.tsx
+│   │   │   ├── Container.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── Topbar.tsx
+│   │   ├── ui/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Loader.tsx
+│   │   │   ├── Input.tsx
+│   │   │   ├── Card.tsx
+│   │   │   ├── Dialog.tsx
+│   │   │   ├── Badge.tsx
+│   │   │   ├── Slider.tsx
+│   │   │   └── Tooltip.tsx
+│   │   └── common/
+│   │       ├── SectionHeading.tsx
+│   │       ├── ThemeToggle.tsx
+│   │       ├── EmptyState.tsx
+│   │       ├── ErrorBoundary.tsx
+│   │       └── Providers.tsx
+│   │
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── globals.css
+│   ├── not-found.tsx
+│   ├── error.tsx
+│   └── loading.tsx
+│
+├── lib/
+│   ├── db.ts
+│   ├── constants.ts
+│   ├── auth.ts
+│   ├── utils.ts
+│   ├── time.ts
+│   └── validations.ts
+│
+├── models/
+│   ├── user.ts
+│   ├── project.ts
+│   ├── template.ts
+│   ├── feature.ts
+│   ├── testimonial.ts
+│   ├── faq.ts
+│   ├── stats.ts
+│   ├── asset.ts
+│   └── export.ts
+│
+├── hooks/
+│   ├── useEditor.ts
+│   ├── useTimeline.ts
+│   ├── usePlayback.ts
+│   ├── useProject.ts
+│   ├── useUndoRedo.ts
+│   └── useKeyboardShortcuts.ts
+│
+├── store/
+│   ├── editor-store.ts
+│   ├── project-store.ts
+│   └── ui-store.ts
+│
+├── types/
+│   ├── project.ts
+│   ├── timeline.ts
+│   ├── asset.ts
+│   └── editor.ts
+│
+├── middleware.ts
+├── next.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+├── eslint.config.mjs
+├── package.json
+├── .env.local
+└── README.md
