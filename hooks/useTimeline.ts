@@ -1,14 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 
 export function useTimeline() {
   const tracks = useEditorStore((s) => s.tracks);
   const currentTime = useEditorStore((s) => s.currentTime);
-  const totalDuration = useEditorStore((s) => s.totalDuration);
+  const zoom = useEditorStore((s) => s.zoom);
+  const setTotalDuration = useEditorStore((s) => s.setTotalDuration);
 
-  // Auto-compute total duration from clips if it's bigger than current
+  // Compute duration from clips (min 10s so empty timeline still works)
   const computedDuration = useMemo(() => {
     let max = 0;
     for (const track of tracks) {
@@ -17,10 +18,14 @@ export function useTimeline() {
         if (end > max) max = end;
       }
     }
-    return Math.max(max + 2, totalDuration);
-  }, [tracks, totalDuration]);
+    return Math.max(max + 2, 10);
+  }, [tracks]);
 
-  const pixelsPerSecond = useEditorStore((s) => s.zoom) * 60;
+  useEffect(() => {
+    setTotalDuration(computedDuration);
+  }, [computedDuration, setTotalDuration]);
+
+  const pixelsPerSecond = zoom * 60;
 
   return {
     tracks,

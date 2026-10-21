@@ -12,7 +12,7 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
   const zoom = useEditorStore((s) => s.zoom);
 
   const markers = useMemo(() => {
-    // Adaptive step based on zoom — more zoom = more detail
+    // Step: how many seconds between minor ticks
     let step = 1;
     if (zoom < 0.5) step = 5;
     else if (zoom < 1) step = 2;
@@ -20,14 +20,25 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
     else if (zoom < 2.5) step = 0.5;
     else step = 0.25;
 
+    // Major every N ticks (multiple of step)
+    const majorEvery = Math.round(5 / step) || 1;
+
     const count = Math.ceil(totalDuration / step) + 1;
-    const result: Array<{ time: number; isMajor: boolean }> = [];
+    const result: Array<{ time: number; isMajor: boolean; label: string }> = [];
 
     for (let i = 0; i < count; i++) {
       const time = i * step;
-      // Major every 5s (or every 1s if zoomed in)
-      const isMajor = step < 1 ? time % 1 === 0 : time % 5 === 0;
-      result.push({ time, isMajor });
+      if (time > totalDuration + step) break;
+
+      // ✅ Major: index-based, not time % 5 (works for fractional steps)
+      const isMajor = i % majorEvery === 0;
+      const label = isMajor
+        ? step < 1
+          ? `${time.toFixed(1)}s`
+          : `${Math.round(time)}s`
+        : '';
+
+      result.push({ time, isMajor, label });
     }
     return result;
   }, [totalDuration, zoom]);
@@ -45,21 +56,18 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
       onClick={handleClick}
     >
       <div className="relative h-full w-full">
-        {markers.map((marker) => {
+        {markers.map((marker, idx) => {
           const leftPercent = (marker.time / totalDuration) * 100;
-          const label = marker.isMajor
-            ? `${Math.floor(marker.time)}s`
-            : '';
 
           return (
             <div
-              key={marker.time}
+              key={idx}
               className="absolute bottom-0 flex flex-col items-center"
               style={{ left: `${leftPercent}%` }}
             >
-              {label && (
+              {marker.label && (
                 <span className="mb-0.5 text-[9px] font-medium text-slate-400">
-                  {label}
+                  {marker.label}
                 </span>
               )}
               <div

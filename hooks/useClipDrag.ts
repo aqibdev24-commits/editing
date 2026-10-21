@@ -30,10 +30,11 @@ export function useClipDrag({
 
   const startXRef = useRef<number>(0);
   const startTimeRef = useRef<number>(clip.startTime);
+  const ghostTimeRef = useRef<number>(clip.startTime);
+  const isDraggingRef = useRef<boolean>(false);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      // Ignore right-click
       if (e.button !== 0) return;
 
       e.preventDefault();
@@ -41,20 +42,34 @@ export function useClipDrag({
 
       startXRef.current = e.clientX;
       startTimeRef.current = clip.startTime;
-
-      setDragState({
-        isDragging: true,
-        dragOffsetX: 0,
-        ghostStartTime: clip.startTime,
-      });
+      ghostTimeRef.current = clip.startTime;
+      isDraggingRef.current = false;
 
       const onMove = (ev: PointerEvent) => {
         const deltaX = ev.clientX - startXRef.current;
+
+        // Only start dragging after 4px movement (avoid accidental drags on click)
+        if (!isDraggingRef.current && Math.abs(deltaX) < 4) {
+          return;
+        }
+
+        if (!isDraggingRef.current) {
+          isDraggingRef.current = true;
+          // ⚠️ setState OUTSIDE the store call — safe
+          setDragState({
+            isDragging: true,
+            dragOffsetX: 0,
+            ghostStartTime: startTimeRef.current,
+          });
+        }
+
         const deltaSeconds = deltaX / pixelsPerSecond;
         const newStartTime = Math.max(
           0,
           Math.min(totalDuration - clip.duration, startTimeRef.current + deltaSeconds)
         );
+
+        ghostTimeRef.current = newStartTime;
 
         setDragState((prev) => ({
           ...prev,
@@ -64,18 +79,26 @@ export function useClipDrag({
       };
 
       const onUp = () => {
-        setDragState((prev) => {
-          // Commit final position
-          moveClip(clip.id, prev.ghostStartTime);
-          return {
-            isDragging: false,
-            dragOffsetX: 0,
-            ghostStartTime: prev.ghostStartTime,
-          };
-        });
-
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
+
+        const wasDragging = isDraggingRef.current;
+        const finalTime = ghostTimeRef.current;
+        const originalTime = startTimeRef.current;
+
+        // ⚠️ CRITICAL: Reset local drag state FIRST (component-local)
+        setDragState({
+          isDragging: false,
+          dragOffsetX: 0,
+          ghostStartTime: finalTime,
+        });
+        isDraggingRef.current = false;
+
+        // ⚠️ Then commit to store — but only if actually moved
+        if (wasDragging && Math.abs(finalTime - originalTime) > 0.001) {
+          // ✅ moveClip is inside pointerup handler — NOT render phase
+          moveClip(clip.id, finalTime);
+        }
       };
 
       window.addEventListener('pointermove', onMove);

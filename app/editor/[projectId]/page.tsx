@@ -19,6 +19,39 @@ export default async function EditorPage({ params }: EditorPageProps) {
 
   await connectDB();
 
+  if (projectId === 'new') {
+    const slug = `untitled-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 6)}`;
+
+    const newProject = await Project.create({
+      title: 'Untitled Project',
+      slug,
+      description: '',
+      thumbnail: '',
+      previewUrl: '',
+      duration: 0,
+      resolution: '1080p',
+      category: 'youtube',
+      author: session.user.email,
+      authorAvatar: session.user.image ?? '',
+      tags: [],
+      timeline: {
+        tracks: [],
+        totalDuration: 10,
+        version: 1,
+      },
+      status: 'draft',
+    });
+
+    redirect(`/editor/${newProject._id.toString()}`);
+  }
+
+  // ✅ Validate ObjectId format before query
+  if (!/^[a-f\d]{24}$/i.test(projectId)) {
+    notFound();
+  }
+
   const project = await Project.findById(projectId).lean();
 
   if (!project) {

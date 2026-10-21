@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useEditorStore } from '@/store/editor-store';
 import { useClipDrag } from '@/hooks/useClipDrag';
@@ -21,24 +22,33 @@ export default function ClipBlock({
   trackLocked,
 }: ClipBlockProps) {
   const selectClip = useEditorStore((s) => s.selectClip);
+  const pointerDownTimeRef = useRef<number>(0);
 
-  const { isDragging, ghostStartTime, handlePointerDown } = useClipDrag({
+  const { isDragging, dragOffsetX, ghostStartTime, handlePointerDown } = useClipDrag({
     clip,
     pixelsPerSecond,
     totalDuration,
   });
 
-  // When dragging, use ghost position; otherwise use real position
   const displayStartTime = isDragging ? ghostStartTime : clip.startTime;
   const leftPercent = (displayStartTime / totalDuration) * 100;
   const widthPercent = (clip.duration / totalDuration) * 100;
 
   return (
     <motion.button
-      onPointerDown={trackLocked ? undefined : handlePointerDown}
+      onPointerDown={
+        trackLocked
+          ? undefined
+          : (e) => {
+              pointerDownTimeRef.current = Date.now();
+              handlePointerDown(e);
+            }
+      }
       onClick={(e) => {
         e.stopPropagation();
-        if (!isDragging) {
+        // ⚠️ Only select if it was a quick tap (not a drag)
+        const elapsed = Date.now() - pointerDownTimeRef.current;
+        if (!isDragging && elapsed < 300) {
           selectClip(clip.id, null);
         }
       }}
@@ -53,7 +63,6 @@ export default function ClipBlock({
       style={{
         left: `${leftPercent}%`,
         width: `${widthPercent}%`,
-        // During drag, show visual offset + scale-up
         transform: isDragging ? 'scale(1.02)' : 'scale(1)',
         transition: isDragging ? 'none' : 'transform 0.15s ease',
       }}
@@ -78,7 +87,6 @@ export default function ClipBlock({
         </div>
       </div>
 
-      {/* Drag indicator badge */}
       {isDragging && (
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">
           {displayStartTime.toFixed(2)}s → {(displayStartTime + clip.duration).toFixed(2)}s

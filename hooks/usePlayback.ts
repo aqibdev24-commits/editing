@@ -5,12 +5,30 @@ import { useEditorStore } from '@/store/editor-store';
 
 export function usePlayback(totalDuration: number) {
   const isPlaying = useEditorStore((s) => s.isPlaying);
-  const currentTime = useEditorStore((s) => s.currentTime);
   const seek = useEditorStore((s) => s.seek);
   const pause = useEditorStore((s) => s.pause);
 
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
+  const currentTimeRef = useRef<number>(0);
+  const totalDurationRef = useRef<number>(totalDuration);
+
+  // Keep refs fresh WITHOUT re-triggering effect
+  useEffect(() => {
+    currentTimeRef.current = useEditorStore.getState().currentTime;
+  });
+
+  useEffect(() => {
+    totalDurationRef.current = totalDuration;
+  }, [totalDuration]);
+
+  // Subscribe to store changes OUTSIDE React render cycle
+  useEffect(() => {
+    const unsubscribe = useEditorStore.subscribe((state) => {
+      currentTimeRef.current = state.currentTime;
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -27,10 +45,11 @@ export function usePlayback(totalDuration: number) {
       const delta = (now - lastTickRef.current) / 1000;
       lastTickRef.current = now;
 
-      const next = currentTime + delta;
+      const next = currentTimeRef.current + delta;
+      const max = totalDurationRef.current;
 
-      if (next >= totalDuration) {
-        seek(totalDuration);
+      if (next >= max) {
+        seek(max);
         pause();
         return;
       }
@@ -44,7 +63,8 @@ export function usePlayback(totalDuration: number) {
     return () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
-  }, [isPlaying, totalDuration, seek, pause, currentTime]);
+  }, [isPlaying, seek, pause]); 
 }

@@ -131,21 +131,25 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
   // ---------------------------------------------------------------------------
 
   pushHistory: (label) => {
-    const state = get();
-    const snapshot: HistorySnapshot = {
-      id: generateSnapshotId(),
-      label,
-      timestamp: Date.now(),
-      tracks: cloneTracks(state.tracks),
-      selectedClipId: state.selectedClipId,
-      selectedTrackId: state.selectedTrackId,
-      totalDuration: state.totalDuration,
-    };
+    // ⚠️ Defer to microtask — prevents "setState during render" errors
+    // when called from pointer event handlers inside other components
+    queueMicrotask(() => {
+      const state = get();
+      const snapshot: HistorySnapshot = {
+        id: generateSnapshotId(),
+        label,
+        timestamp: Date.now(),
+        tracks: cloneTracks(state.tracks),
+        selectedClipId: state.selectedClipId,
+        selectedTrackId: state.selectedTrackId,
+        totalDuration: state.totalDuration,
+      };
 
-    set((s) => ({
-      past: [...s.past, snapshot].slice(-s.maxHistory),
-      future: [], // clear future on new action
-    }));
+      set((s) => ({
+        past: [...s.past, snapshot].slice(-s.maxHistory),
+        future: [],
+      }));
+    });
   },
 
   undo: () => {
@@ -348,8 +352,24 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
   },
 
   moveClip: (clipId, newStartTime) => {
+    const state = get();
+
+    // Find current clip — skip if no actual change
+    let currentClip: TrackClip | null = null;
+    for (const track of state.tracks) {
+      const found = track.clips.find((c) => c.id === clipId);
+      if (found) {
+        currentClip = found;
+        break;
+      }
+    }
+
+    if (!currentClip) return;
+    if (Math.abs(currentClip.startTime - newStartTime) < 0.001) return;
+
     get().pushHistory('Move clip');
-    set((state) => ({
+
+    set({
       tracks: state.tracks.map((track) => ({
         ...track,
         clips: track.clips.map((clip) =>
@@ -357,7 +377,7 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
         ),
       })),
       isDirty: true,
-    }));
+    });
   },
 
   // ---------------------------------------------------------------------------
@@ -367,7 +387,10 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
   play: () => set({ isPlaying: true }),
   pause: () => set({ isPlaying: false }),
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-  seek: (time) => set({ currentTime: Math.max(0, time) }),
+  seek: (time) =>
+    set((state) => ({
+      currentTime: Math.max(0, Math.min(state.totalDuration, time)),
+    })),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
   toggleMute: () => set((state) => ({ muted: !state.muted })),
   setTotalDuration: (duration) => set({ totalDuration: Math.max(1, duration) }),
