@@ -152,3 +152,10 @@ vexora/
 ├── package.json
 ├── .env.local
 └── README.md
+
+
+
+
+
+small things 
+text ke positioning ko number ki jaga string

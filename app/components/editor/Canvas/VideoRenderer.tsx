@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/editor-store';
+import { computeAnimatedValues, buildFilterString } from '@/lib/animation';
 import type { TrackClip } from '@/types/editor';
 
 interface VideoRendererProps {
@@ -15,51 +16,44 @@ export default function VideoRenderer({ clip, sourceUrl }: VideoRendererProps) {
   const currentTime = useEditorStore((s) => s.currentTime);
   const volume = useEditorStore((s) => s.volume);
   const muted = useEditorStore((s) => s.muted);
+  const playbackRate = useEditorStore((s) => s.playbackRate);
 
-  // Local clip time = global time - clip start
   const localTime = Math.max(0, currentTime - clip.startTime);
 
-  // Sync playback state
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     if (isPlaying) {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Browser autoplay policy might block — ignore
-        });
-      }
+      const p = video.play();
+      if (p !== undefined) p.catch(() => {});
     } else {
       video.pause();
     }
   }, [isPlaying]);
 
-  // Sync currentTime (when user seeks)
+  // ✅ Sync playback rate with global speed
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    video.playbackRate = playbackRate;
+  }, [playbackRate]);
 
-    // Only sync if difference is significant (> 0.3s) to avoid fighting playback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
     if (Math.abs(video.currentTime - localTime) > 0.3) {
       video.currentTime = localTime;
     }
   }, [localTime]);
 
-  // Sync volume
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     video.volume = Math.min(1, (muted ? 0 : volume) / 100);
   }, [volume, muted]);
 
-  // Compute transform styles
-  const opacity = (clip.opacity ?? 100) / 100;
-  const scale = (clip.scale ?? 100) / 100;
-  const rotation = clip.rotation ?? 0;
-  const posX = clip.positionX ?? 0;
-  const posY = clip.positionY ?? 0;
+  const animated = computeAnimatedValues(clip, localTime);
+  const filterCss = buildFilterString(animated);
 
   return (
     <video
@@ -69,9 +63,10 @@ export default function VideoRenderer({ clip, sourceUrl }: VideoRendererProps) {
       preload="auto"
       className="pointer-events-none absolute inset-0 h-full w-full object-contain"
       style={{
-        opacity,
-        transform: `translate(${posX}px, ${posY}px) scale(${scale}) rotate(${rotation}deg)`,
+        opacity: animated.opacity / 100,
+        transform: `translate(${animated.x}px, ${animated.y}px) scale(${animated.scale / 100}) rotate(${animated.rotation}deg)`,
         transformOrigin: 'center center',
+        filter: filterCss,
       }}
     />
   );

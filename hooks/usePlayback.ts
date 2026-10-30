@@ -5,6 +5,8 @@ import { useEditorStore } from '@/store/editor-store';
 
 export function usePlayback(totalDuration: number) {
   const isPlaying = useEditorStore((s) => s.isPlaying);
+  const playbackRate = useEditorStore((s) => s.playbackRate);
+  const isLooping = useEditorStore((s) => s.isLooping);
   const seek = useEditorStore((s) => s.seek);
   const pause = useEditorStore((s) => s.pause);
 
@@ -12,23 +14,22 @@ export function usePlayback(totalDuration: number) {
   const lastTickRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
   const totalDurationRef = useRef<number>(totalDuration);
+  const rateRef = useRef<number>(playbackRate);
+  const loopingRef = useRef<boolean>(isLooping);
 
-  // Keep refs fresh WITHOUT re-triggering effect
+  // Subscribe to store changes
   useEffect(() => {
-    currentTimeRef.current = useEditorStore.getState().currentTime;
-  });
+    const unsubscribe = useEditorStore.subscribe((state) => {
+      currentTimeRef.current = state.currentTime;
+      rateRef.current = state.playbackRate;
+      loopingRef.current = state.isLooping;
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     totalDurationRef.current = totalDuration;
   }, [totalDuration]);
-
-  // Subscribe to store changes OUTSIDE React render cycle
-  useEffect(() => {
-    const unsubscribe = useEditorStore.subscribe((state) => {
-      currentTimeRef.current = state.currentTime;
-    });
-    return unsubscribe;
-  }, []);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -42,16 +43,23 @@ export function usePlayback(totalDuration: number) {
     lastTickRef.current = performance.now();
 
     const tick = (now: number) => {
-      const delta = (now - lastTickRef.current) / 1000;
+      const delta = ((now - lastTickRef.current) / 1000) * rateRef.current;
       lastTickRef.current = now;
 
       const next = currentTimeRef.current + delta;
       const max = totalDurationRef.current;
 
       if (next >= max) {
-        seek(max);
-        pause();
-        return;
+        if (loopingRef.current) {
+          seek(0);
+          lastTickRef.current = now;
+          rafRef.current = requestAnimationFrame(tick);
+          return;
+        } else {
+          seek(max);
+          pause();
+          return;
+        }
       }
 
       seek(next);
@@ -66,5 +74,5 @@ export function usePlayback(totalDuration: number) {
         rafRef.current = null;
       }
     };
-  }, [isPlaying, seek, pause]); 
+  }, [isPlaying, seek, pause]);
 }

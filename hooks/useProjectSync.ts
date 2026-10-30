@@ -128,12 +128,29 @@ export function useLoadProject(project: RawProject) {
   const markClean = useEditorStore((s) => s.markClean);
 
   useEffect(() => {
-    const tracks = project.timeline?.tracks;
-    if (!tracks || tracks.length === 0) {
+    const rawTracks = project.timeline?.tracks;
+    if (!rawTracks || rawTracks.length === 0) {
       return;
     }
 
-    setTracks(tracks);
+    const seenTrackIds = new Set<string>();
+    const tracks = rawTracks.filter((t) => {
+      if (seenTrackIds.has(t.id)) return false;
+      seenTrackIds.add(t.id);
+      return true;
+    });
+
+    const cleanedTracks = tracks.map((track) => {
+      const seenClipIds = new Set<string>();
+      const clips = track.clips.filter((c) => {
+        if (seenClipIds.has(c.id)) return false;
+        seenClipIds.add(c.id);
+        return true;
+      });
+      return { ...track, clips };
+    });
+
+    setTracks(cleanedTracks);
     if (project.timeline?.totalDuration) {
       setTotalDuration(project.timeline.totalDuration);
     }

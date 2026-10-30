@@ -12,7 +12,6 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
   const zoom = useEditorStore((s) => s.zoom);
 
   const markers = useMemo(() => {
-    // Step: how many seconds between minor ticks
     let step = 1;
     if (zoom < 0.5) step = 5;
     else if (zoom < 1) step = 2;
@@ -20,9 +19,7 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
     else if (zoom < 2.5) step = 0.5;
     else step = 0.25;
 
-    // Major every N ticks (multiple of step)
     const majorEvery = Math.round(5 / step) || 1;
-
     const count = Math.ceil(totalDuration / step) + 1;
     const result: Array<{ time: number; isMajor: boolean; label: string }> = [];
 
@@ -30,7 +27,6 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
       const time = i * step;
       if (time > totalDuration + step) break;
 
-      // ✅ Major: index-based, not time % 5 (works for fractional steps)
       const isMajor = i % majorEvery === 0;
       const label = isMajor
         ? step < 1
@@ -52,7 +48,7 @@ export default function TimelineRuler({ totalDuration, onSeek }: TimelineRulerPr
 
   return (
     <div
-      className="relative h-6 cursor-pointer select-none border-b border-white/5 bg-slate-950/95 backdrop-blur-sm"
+      className="relative h-6 w-full cursor-pointer select-none border-b border-white/5 bg-slate-950/95 backdrop-blur-sm"
       onClick={handleClick}
     >
       <div className="relative h-full w-full">

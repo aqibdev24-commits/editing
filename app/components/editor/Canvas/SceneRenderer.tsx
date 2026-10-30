@@ -12,14 +12,13 @@ interface SceneRendererProps {
 }
 
 interface ActiveClip extends TrackClip {
-  assetUrl?: string;
+  resolvedUrl?: string;
 }
 
 export default function SceneRenderer({ assets }: SceneRendererProps) {
   const tracks = useEditorStore((s) => s.tracks);
   const currentTime = useEditorStore((s) => s.currentTime);
 
-  // Find all clips active at current time, ordered by track (bottom-up render)
   const activeClips = useMemo<ActiveClip[]>(() => {
     const result: ActiveClip[] = [];
 
@@ -29,12 +28,18 @@ export default function SceneRenderer({ assets }: SceneRendererProps) {
       for (const clip of track.clips) {
         const endTime = clip.startTime + clip.duration;
         if (currentTime >= clip.startTime && currentTime < endTime) {
-          // Match asset by name (fallback — real implementation should have assetId on clip)
-          const asset = assets.find((a) => a.name === clip.name);
-          result.push({
-            ...clip,
-            assetUrl: asset?.url,
-          });
+          // ✅ Prefer clip.assetUrl, fallback to asset lookup by assetId or name
+          let resolvedUrl = clip.assetUrl;
+          if (!resolvedUrl && clip.assetId) {
+            const asset = assets.find((a) => a._id === clip.assetId);
+            resolvedUrl = asset?.url;
+          }
+          if (!resolvedUrl) {
+            const asset = assets.find((a) => a.name === clip.name);
+            resolvedUrl = asset?.url;
+          }
+
+          result.push({ ...clip, resolvedUrl });
         }
       }
     }
@@ -45,22 +50,14 @@ export default function SceneRenderer({ assets }: SceneRendererProps) {
   return (
     <div className="absolute inset-0">
       {activeClips.map((clip) => {
-        if (clip.type === 'video' && clip.assetUrl) {
+        if (clip.type === 'video' && clip.resolvedUrl) {
           return (
-            <VideoRenderer
-              key={clip.id}
-              clip={clip}
-              sourceUrl={clip.assetUrl}
-            />
+            <VideoRenderer key={clip.id} clip={clip} sourceUrl={clip.resolvedUrl} />
           );
         }
-        if (clip.type === 'image' && clip.assetUrl) {
+        if (clip.type === 'image' && clip.resolvedUrl) {
           return (
-            <ImageRenderer
-              key={clip.id}
-              clip={clip}
-              sourceUrl={clip.assetUrl}
-            />
+            <ImageRenderer key={clip.id} clip={clip} sourceUrl={clip.resolvedUrl} />
           );
         }
         if (clip.type === 'text') {

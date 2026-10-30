@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { Project } from '@/models/project';
 import { Asset } from '@/models/asset';
 import EditorClient from './EditorClient';
+import { randomBytes } from 'crypto';
 
 interface EditorPageProps {
   params: Promise<{ projectId: string }>;
@@ -20,9 +21,7 @@ export default async function EditorPage({ params }: EditorPageProps) {
   await connectDB();
 
   if (projectId === 'new') {
-    const slug = `untitled-${Date.now().toString(36)}-${Math.random()
-      .toString(36)
-      .slice(2, 6)}`;
+const slug = `untitled-${randomBytes(16).toString('hex')}`;
 
     const newProject = await Project.create({
       title: 'Untitled Project',
@@ -47,7 +46,6 @@ export default async function EditorPage({ params }: EditorPageProps) {
     redirect(`/editor/${newProject._id.toString()}`);
   }
 
-  // ✅ Validate ObjectId format before query
   if (!/^[a-f\d]{24}$/i.test(projectId)) {
     notFound();
   }

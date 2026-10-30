@@ -1,6 +1,8 @@
 'use client';
 
 import Image from 'next/image';
+import { useEditorStore } from '@/store/editor-store';
+import { computeAnimatedValues, buildFilterString } from '@/lib/animation';
 import type { TrackClip } from '@/types/editor';
 
 interface ImageRendererProps {
@@ -9,19 +11,20 @@ interface ImageRendererProps {
 }
 
 export default function ImageRenderer({ clip, sourceUrl }: ImageRendererProps) {
-  const opacity = (clip.opacity ?? 100) / 100;
-  const scale = (clip.scale ?? 100) / 100;
-  const rotation = clip.rotation ?? 0;
-  const posX = clip.positionX ?? 0;
-  const posY = clip.positionY ?? 0;
+  const currentTime = useEditorStore((s) => s.currentTime);
+  const localTime = Math.max(0, currentTime - clip.startTime);
+
+  const animated = computeAnimatedValues(clip, localTime);
+  const filterCss = buildFilterString(animated);
 
   return (
     <div
       className="pointer-events-none absolute inset-0"
       style={{
-        opacity,
-        transform: `translate(${posX}px, ${posY}px) scale(${scale}) rotate(${rotation}deg)`,
+        opacity: animated.opacity / 100,
+        transform: `translate(${animated.x}px, ${animated.y}px) scale(${animated.scale / 100}) rotate(${animated.rotation}deg)`,
         transformOrigin: 'center center',
+        filter: filterCss,
       }}
     >
       <Image

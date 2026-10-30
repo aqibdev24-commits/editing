@@ -8,6 +8,8 @@ import type {
   PanelTab,
   ToolMode,
   HistorySnapshot,
+  ClipKeyframe,
+
 } from '@/types/editor';
 
 // ============================================================================
@@ -72,13 +74,13 @@ const INITIAL_TRACKS: Track[] = [
 let clipCounter = 100;
 function generateClipId(): string {
   clipCounter += 1;
-  return `clip-${clipCounter}`;
+  return `clip-${Date.now()}-${clipCounter}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 let trackCounter = 10;
 function generateTrackId(): string {
   trackCounter += 1;
-  return `track-${trackCounter}`;
+  return `track-${Date.now()}-${trackCounter}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 let snapshotCounter = 0;
@@ -109,8 +111,12 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
   tracks: INITIAL_TRACKS,
   selectedClipId: 'clip-2',
   selectedTrackId: 'track-video',
+  selectedKeyframeId: null,
   currentTime: 5.5,
   isPlaying: false,
+  playbackRate: 1,
+  isLooping: false,
+  isFullscreen: false,
   volume: 100,
   muted: false,
   totalDuration: 24,
@@ -120,6 +126,7 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
   isDirty: false,
   isSaving: false,
   lastSavedAt: null,
+  canvasBackground: null,
 
   // History
   past: [],
@@ -327,6 +334,104 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
     }));
   },
 
+
+  // ═══════════════════════════════════════════════════════════════════
+  // KEYFRAME ACTIONS
+  // ═══════════════════════════════════════════════════════════════════
+
+  selectKeyframe: (keyframeId) =>
+    set({ selectedKeyframeId: keyframeId }),
+
+  addKeyframe: (clipId, time) => {
+    const id = `kf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    get().pushHistory('Add keyframe');
+
+    set((state) => ({
+      tracks: state.tracks.map((track) => ({
+        ...track,
+        clips: track.clips.map((clip) => {
+          if (clip.id !== clipId) return clip;
+
+          const existing = clip.keyframes ?? [];
+
+          // Snapshot current static values as the initial keyframe state
+          const snapshot: ClipKeyframe = {
+            id,
+            time,
+            x: clip.positionX ?? 0,
+            y: clip.positionY ?? 0,
+            scale: clip.scale ?? 100,
+            rotation: clip.rotation ?? 0,
+            opacity: clip.opacity ?? 100,
+            blur: clip.filters?.blur ?? 0,
+            brightness: clip.filters?.brightness ?? 100,
+            contrast: clip.filters?.contrast ?? 100,
+            saturate: clip.filters?.saturate ?? 100,
+            fontSize: clip.textStyle?.fontSize ?? 32,
+            letterSpacing: clip.textStyle?.letterSpacing ?? 0,
+            color: clip.textStyle?.color,
+            backgroundColor: clip.textStyle?.background,
+            volume: clip.volume ?? 100,
+            easing: 'easeInOut',
+          };
+
+          return {
+            ...clip,
+            keyframes: [...existing, snapshot].sort((a, b) => a.time - b.time),
+          };
+        }),
+      })),
+      selectedKeyframeId: id,
+      isDirty: true,
+    }));
+
+    return id;
+  },
+
+  updateKeyframe: (clipId, keyframeId, updates) => {
+    get().pushHistory('Edit keyframe');
+
+    set((state) => ({
+      tracks: state.tracks.map((track) => ({
+        ...track,
+        clips: track.clips.map((clip) =>
+          clip.id === clipId
+            ? {
+              ...clip,
+              keyframes: (clip.keyframes ?? []).map((kf) =>
+                kf.id === keyframeId ? { ...kf, ...updates } : kf
+              ),
+            }
+            : clip
+        ),
+      })),
+      isDirty: true,
+    }));
+  },
+
+  removeKeyframe: (clipId, keyframeId) => {
+    get().pushHistory('Remove keyframe');
+
+    set((state) => ({
+      tracks: state.tracks.map((track) => ({
+        ...track,
+        clips: track.clips.map((clip) =>
+          clip.id === clipId
+            ? {
+              ...clip,
+              keyframes: (clip.keyframes ?? []).filter((kf) => kf.id !== keyframeId),
+            }
+            : clip
+        ),
+      })),
+      selectedKeyframeId:
+        state.selectedKeyframeId === keyframeId ? null : state.selectedKeyframeId,
+      isDirty: true,
+    }));
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+
   duplicateClip: (clipId) => {
     get().pushHistory('Duplicate clip');
     const state = get();
@@ -393,6 +498,9 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
     })),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
   toggleMute: () => set((state) => ({ muted: !state.muted })),
+  setPlaybackRate: (rate) => set({ playbackRate: Math.max(0.25, Math.min(4, rate)) }),
+  toggleLooping: () => set((state) => ({ isLooping: !state.isLooping })),
+  setFullscreen: (fullscreen) => set({ isFullscreen: fullscreen }),
   setTotalDuration: (duration) => set({ totalDuration: Math.max(1, duration) }),
 
   // ---------------------------------------------------------------------------
@@ -414,6 +522,10 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
     get().clearHistory();
   },
   setSaving: (isSaving) => set({ isSaving }),
+  setCanvasBackground: (bg) => {
+    get().pushHistory('Change background');
+    set({ canvasBackground: bg, isDirty: true });
+  },
 }));
 
 // ============================================================================
@@ -431,3 +543,4 @@ export const selectSelectedClip = (state: EditorState & EditorActions) => {
   }
   return null;
 };
+

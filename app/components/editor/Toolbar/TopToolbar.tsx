@@ -20,11 +20,14 @@ import { useEditorStore } from '@/store/editor-store';
 import { useToast } from '@/app/components/ui/Toast';
 import type { EditorProject, EditorUser } from '@/types/editor';
 import ToolbarButton from './ToolbarButton';
+import EditableTitle from './EditableTitle';
+
 
 interface TopToolbarProps {
   project: EditorProject;
   user: EditorUser;
   onSave: () => void;
+  onTitleSave?: (newTitle: string) => void;
   onToggleLeftPanel?: () => void;
   onToggleRightPanel?: () => void;
 }
@@ -33,6 +36,7 @@ export default function TopToolbar({
   project,
   user,
   onSave,
+  onTitleSave,
   onToggleLeftPanel,
   onToggleRightPanel,
 }: TopToolbarProps) {
@@ -95,7 +99,16 @@ export default function TopToolbar({
 
         <div className="hidden min-w-0 sm:block">
           <div className="flex items-center gap-2">
-            <h1 className="truncate text-sm font-semibold text-white">{project.title}</h1>
+            {onTitleSave ? (
+              <EditableTitle
+                value={project.title}
+                onSave={onTitleSave}
+                maxLength={100}
+                className="max-w-[240px]"
+              />
+            ) : (
+              <h1 className="truncate text-sm font-semibold text-white">{project.title}</h1>
+            )}
             <span className="hidden rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300 md:inline-block">
               {project.resolution}
             </span>

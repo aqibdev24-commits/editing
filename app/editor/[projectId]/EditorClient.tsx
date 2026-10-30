@@ -28,14 +28,15 @@ interface EditorClientProps {
   assets: EditorAsset[];
   user: EditorUser;
 }
-
-export default function EditorClient({ project, assets, user }: EditorClientProps) {
+export default function EditorClient({ project: initialProject, assets, user }: EditorClientProps) {
   const totalDuration = useEditorStore((s) => s.totalDuration);
   const isDirty = useEditorStore((s) => s.isDirty);
   const activePanel = useEditorStore((s) => s.activePanel);
 
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
+  const [project, setProject] = useState(initialProject);
+
 
   const { addToast, updateToast } = useToast();
 
@@ -85,12 +86,52 @@ export default function EditorClient({ project, assets, user }: EditorClientProp
     }
   }, [isDirty, saveNow, addToast, updateToast]);
 
+  const handleTitleSave = useCallback(
+    async (newTitle: string) => {
+      // Optimistic update
+      const previousTitle = project.title;
+      setProject((p) => ({ ...p, title: newTitle }));
+
+      try {
+        const res = await fetch(`/api/projects/${project._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: newTitle }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          // Revert on failure
+          setProject((p) => ({ ...p, title: previousTitle }));
+          addToast({
+            type: 'error',
+            title: 'Failed to rename project',
+            description: data.error ?? 'Please try again',
+          });
+          return;
+        }
+
+        addToast({ type: 'success', title: 'Project renamed' });
+      } catch {
+        setProject((p) => ({ ...p, title: previousTitle }));
+        addToast({
+          type: 'error',
+          title: 'Network error',
+          description: 'Could not save new title',
+        });
+      }
+    },
+    [project._id, project.title, addToast]
+  );
+
   return (
     <div className="flex h-full w-full flex-col">
       <TopToolbar
         project={project}
         user={user}
         onSave={handleSave}
+        onTitleSave={handleTitleSave}         
         onToggleLeftPanel={() => setLeftDrawerOpen((v) => !v)}
         onToggleRightPanel={() => setRightDrawerOpen((v) => !v)}
       />

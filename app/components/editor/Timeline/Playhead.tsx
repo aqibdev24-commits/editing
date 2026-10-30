@@ -55,7 +55,7 @@ export default function Playhead({ totalDuration, trackAreaHeight }: PlayheadPro
       }}
     >
       <div className="relative h-full">
-        {/* Head (draggable) */}
+        {/* Head */}
         <div
           onPointerDown={handlePointerDown}
           className={`pointer-events-auto absolute -left-1.5 top-0 cursor-ew-resize transition-transform ${
@@ -68,9 +68,7 @@ export default function Playhead({ totalDuration, trackAreaHeight }: PlayheadPro
         </div>
 
         {/* Line */}
-        <div className="pointer-events-none absolute left-0 top-3 h-full w-px bg-red-500 shadow-lg shadow-red-500/50">
-          <div className="absolute -left-1 top-0 h-1.5 w-2.5 rounded-b-sm bg-red-500" />
-        </div>
+        <div className="pointer-events-none absolute left-0 top-3 h-full w-px bg-red-500 shadow-lg shadow-red-500/50" />
       </div>
     </div>
   );

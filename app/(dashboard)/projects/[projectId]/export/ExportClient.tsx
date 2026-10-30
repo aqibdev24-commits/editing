@@ -174,6 +174,8 @@ export default function ExportClient({ project, user }: ExportClientProps) {
   }, [recorder, settings, project._id, project.duration, addToast]);
 
   const handleDownload = useCallback(() => {
+
+    
     if (!exportedBlob) return;
     const ext = FORMAT_EXTENSION_MAP[settings.format];
     const filename = `${project.title.replace(/[^a-zA-Z0-9-_]/g, '_')}.${ext}`;

@@ -22,7 +22,6 @@ export function useCanvasRecorder({
   format,
   quality,
   fps,
-  includeAudio,
 }: UseCanvasRecorderOptions) {
   const [state, setState] = useState<RecorderState>({
     isRecording: false,
@@ -147,8 +146,7 @@ export function useCanvasRecorder({
         });
       }
     },
-    [format, quality, fps, includeAudio, stop]
-  );
+    [format, quality, fps, stop]  );
 
   const getExtension = useCallback(() => FORMAT_EXTENSION_MAP[format], [format]);
 

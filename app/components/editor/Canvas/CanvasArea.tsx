@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Film, Maximize2, AlertCircle } from 'lucide-react';
+import { Film, Maximize2, AlertCircle, Image as ImageIcon, Palette, Video } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import SceneRenderer from './SceneRenderer';
 import type { EditorProject, EditorAsset } from '@/types/editor';
@@ -26,11 +26,59 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
   const currentTime = useEditorStore((s) => s.currentTime);
   const totalDuration = useEditorStore((s) => s.totalDuration);
   const tracks = useEditorStore((s) => s.tracks);
+  const canvasBackground = useEditorStore((s) => s.canvasBackground);
+  const setCanvasBackground = useEditorStore((s) => s.setCanvasBackground);
 
   const [showGrid, setShowGrid] = useState<boolean>(false);
   const [showSafeArea, setShowSafeArea] = useState<boolean>(false);
+  const [bgPickerOpen, setBgPickerOpen] = useState<boolean>(false);
 
   const hasAnyClips = tracks.some((t) => t.clips.length > 0);
+
+  // Background rendering
+  const renderBackground = () => {
+    if (!canvasBackground) {
+      return (
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-900/30 via-slate-900 to-fuchsia-900/30" />
+      );
+    }
+
+    if (canvasBackground.type === 'color') {
+      return (
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: canvasBackground.value }}
+        />
+      );
+    }
+
+    if (canvasBackground.type === 'image') {
+      return (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${canvasBackground.value})` }}
+        />
+      );
+    }
+
+    if (canvasBackground.type === 'video') {
+      return (
+        <video
+          src={canvasBackground.value}
+          className="absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      );
+    }
+
+    return null;
+  };
+
+  // Video assets for background picker
+  const imageAssets = assets.filter((a) => a.type === 'image' || a.type === 'video');
 
   return (
     <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-slate-950 p-6">
@@ -44,11 +92,14 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
         layout
         className="relative aspect-video max-h-full w-full max-w-4xl overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl"
       >
+        {/* ✅ Background */}
+        {renderBackground()}
+
         {/* Real scene content */}
         <SceneRenderer assets={assets} />
 
         {/* Empty state overlay */}
-        {!hasAnyClips && (
+        {!hasAnyClips && !canvasBackground && (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-violet-900/30 via-slate-900 to-fuchsia-900/30">
             <div className="text-center">
               <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 backdrop-blur-sm">
@@ -88,8 +139,16 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
           </motion.div>
         )}
 
-        {/* Top-right info */}
+        {/* Top-right info + Background button */}
         <div className="absolute right-3 top-3 flex items-center gap-1.5">
+          <button
+            onClick={() => setBgPickerOpen((v) => !v)}
+            className="flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[10px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:bg-black/80 hover:text-white"
+            title="Set background"
+          >
+            <Palette className="h-3 w-3" />
+            BG
+          </button>
           <button
             onClick={() => setShowGrid((v) => !v)}
             className={`rounded-md px-2 py-1 text-[10px] font-medium backdrop-blur-sm transition-colors ${
@@ -97,7 +156,6 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
                 ? 'bg-violet-500/80 text-white'
                 : 'bg-black/60 text-white/70 hover:bg-black/80 hover:text-white'
             }`}
-            title="Toggle grid"
           >
             Grid
           </button>
@@ -108,7 +166,6 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
                 ? 'bg-amber-500/80 text-white'
                 : 'bg-black/60 text-white/70 hover:bg-black/80 hover:text-white'
             }`}
-            title="Toggle safe area"
           >
             Safe
           </button>
@@ -116,6 +173,19 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
             16:9 · {project.resolution}
           </div>
         </div>
+
+        {/* Background picker popup */}
+        {bgPickerOpen && (
+          <BackgroundPicker
+            currentBg={canvasBackground}
+            assets={imageAssets}
+            onChange={(bg) => {
+              setCanvasBackground(bg);
+              setBgPickerOpen(false);
+            }}
+            onClose={() => setBgPickerOpen(false)}
+          />
+        )}
 
         {/* Warning when no clips */}
         {!hasAnyClips && (
@@ -134,5 +204,125 @@ export default function CanvasArea({ project, assets }: CanvasAreaProps) {
         </button>
       </motion.div>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BACKGROUND PICKER
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface BackgroundPickerProps {
+  currentBg: { type: 'color' | 'image' | 'video'; value: string } | null;
+  assets: EditorAsset[];
+  onChange: (bg: { type: 'color' | 'image' | 'video'; value: string } | null) => void;
+  onClose: () => void;
+}
+
+const BG_COLORS = [
+  '#000000', '#ffffff', '#0f172a', '#1e1b4b',
+  '#4c1d95', '#7c2d12', '#14532d', '#831843',
+  '#1e293b', '#0c4a6e', '#3f3f46', '#713f12',
+];
+
+function BackgroundPicker({ currentBg, assets, onChange, onClose }: BackgroundPickerProps) {
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute right-3 top-14 z-50 w-72 overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-2xl backdrop-blur-xl"
+      >
+        <div className="border-b border-white/5 p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Canvas Background
+          </h3>
+        </div>
+
+        <div className="max-h-96 overflow-y-auto p-3">
+          {/* Colors */}
+          <div className="mb-4">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+              <Palette className="h-2.5 w-2.5" /> Colors
+            </div>
+            <div className="grid grid-cols-6 gap-1.5">
+              {BG_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => onChange({ type: 'color', value: color })}
+                  className={`aspect-square rounded-md border-2 transition-all ${
+                    currentBg?.type === 'color' && currentBg.value === color
+                      ? 'border-violet-500 ring-2 ring-violet-500/30'
+                      : 'border-white/10 hover:border-white/30'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  title={color}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Images/Videos from assets */}
+          {assets.length > 0 && (
+            <div className="mb-4">
+              <div className="mb-1.5 flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+                <ImageIcon className="h-2.5 w-2.5" /> Your Media
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {assets.slice(0, 12).map((asset) => {
+                  const isActive =
+                    currentBg?.type === asset.type && currentBg.value === asset.url;
+                  return (
+                    <button
+                      key={asset._id}
+                      onClick={() =>
+                        onChange({
+                          type: asset.type === 'video' ? 'video' : 'image',
+                          value: asset.url,
+                        })
+                      }
+                      className={`aspect-square overflow-hidden rounded-md border-2 bg-slate-800 transition-all ${
+                        isActive
+                          ? 'border-violet-500 ring-2 ring-violet-500/30'
+                          : 'border-white/10 hover:border-white/30'
+                      }`}
+                      title={asset.name}
+                    >
+                      {asset.type === 'video' ? (
+                        <div className="flex h-full w-full items-center justify-center text-violet-400">
+                          <Video className="h-4 w-4" />
+                        </div>
+                      ) : asset.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={asset.thumbnailUrl}
+                          alt={asset.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-slate-500">
+                          <ImageIcon className="h-4 w-4" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Clear */}
+          <button
+            onClick={() => onChange(null)}
+            className="w-full rounded-md border border-white/10 bg-white/5 py-1.5 text-[10px] font-medium text-slate-400 hover:bg-white/10 hover:text-white"
+          >
+            Clear Background
+          </button>
+        </div>
+      </motion.div>
+    </>
   );
 }

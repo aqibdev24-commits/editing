@@ -22,6 +22,13 @@ export async function GET(
       );
     }
 
+    if (slug === 'new') {
+      return NextResponse.json(
+        { success: false, error: 'Invalid project ID' },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
     // Try by _id first (Mongo ObjectId), then by slug

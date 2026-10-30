@@ -3,9 +3,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEditorStore } from '@/store/editor-store';
 import PropertiesHeader from '../Properties/PropertiesHeader';
-import TransformSection from '../Properties/TransformSection';
-import PositionSection from '../Properties/PositionSection';
-import AudioSection from '../Properties/AudioSection';
+import KeyframesSection from '../Properties/KeyframesSection';
+import KeyframeEditSection from '../Properties/KeyframeEditSection';
 import TimingSection from '../Properties/TimingSection';
 import ClipActions from '../Properties/ClipActions';
 import EmptyPanel from './EmptyPanel';
@@ -23,9 +22,6 @@ export default function PropertiesPanel() {
     return null;
   })();
 
-  const showAudio = selectedClip?.type === 'audio' || selectedClip?.type === 'video';
-  const showTransform = selectedClip?.type !== 'audio';
-
   return (
     <aside className="hidden w-72 flex-shrink-0 flex-col border-l border-white/5 bg-slate-950/50 xl:flex">
       <AnimatePresence mode="wait">
@@ -41,16 +37,16 @@ export default function PropertiesPanel() {
             <PropertiesHeader clip={selectedClip} />
 
             <div className="flex-1 space-y-6 overflow-y-auto p-4">
-              {showTransform && (
-                <TransformSection key={`t-${selectedClip.id}`} clip={selectedClip} />
-              )}
-              {showTransform && (
-                <PositionSection key={`p-${selectedClip.id}`} clip={selectedClip} />
-              )}
-              {showAudio && (
-                <AudioSection key={`a-${selectedClip.id}`} clip={selectedClip} />
-              )}
+              {/* 1. KEYFRAMES — list + add */}
+              <KeyframesSection key={`kfs-${selectedClip.id}`} clip={selectedClip} />
+
+              {/* 2. EDIT — edits selected keyframe (or base if none) */}
+              <KeyframeEditSection key={`edit-${selectedClip.id}`} clip={selectedClip} />
+
+              {/* 3. TIMING */}
               <TimingSection key={`ti-${selectedClip.id}`} clip={selectedClip} />
+
+              {/* 4. ACTIONS */}
               <ClipActions clip={selectedClip} />
             </div>
           </motion.div>
